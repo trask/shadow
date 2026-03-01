@@ -402,6 +402,63 @@ class TransformersTest : BaseTransformerTest() {
       )
   }
 
+  /**
+   * Regression test: plexus-xml 4.1+ transitively depends on maven-xml which registers its
+   * XmlService only via JPMS module-info (no META-INF/services fallback). This causes
+   * "No XmlService implementation found" when running in Gradle's flat classloader.
+   */
+  @Test
+  fun componentsXmlResourceTransformerMergesXml() {
+    val one = buildJarOne {
+      insert(
+        ComponentsXmlResourceTransformer.COMPONENTS_XML_PATH,
+        """
+          <component-set>
+            <components>
+              <component>
+                <role>org.example.RoleA</role>
+                <role-hint>default</role-hint>
+                <implementation>org.example.ImplA</implementation>
+              </component>
+            </components>
+          </component-set>
+        """.trimIndent(),
+      )
+    }
+    val two = buildJarTwo {
+      insert(
+        ComponentsXmlResourceTransformer.COMPONENTS_XML_PATH,
+        """
+          <component-set>
+            <components>
+              <component>
+                <role>org.example.RoleB</role>
+                <role-hint>default</role-hint>
+                <implementation>org.example.ImplB</implementation>
+              </component>
+            </components>
+          </component-set>
+        """.trimIndent(),
+      )
+    }
+
+    projectScript.appendText(
+      transform<ComponentsXmlResourceTransformer>(
+        dependenciesBlock = implementationFiles(one, two),
+      )
+    )
+
+    runWithSuccess(shadowJarPath)
+
+    assertThat(outputShadowedJar).useAll {
+      containsAtLeast(ComponentsXmlResourceTransformer.COMPONENTS_XML_PATH)
+      getContent(ComponentsXmlResourceTransformer.COMPONENTS_XML_PATH).all {
+        contains("org.example.ImplA")
+        contains("org.example.ImplB")
+      }
+    }
+  }
+
   @Test
   fun mergeLicenseResourceTransformer() {
     val one = buildJarOne { insert("META-INF/LICENSE", "license one") }

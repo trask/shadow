@@ -3,6 +3,10 @@
 
 ## [Unreleased](https://github.com/GradleUp/shadow/compare/9.3.3...HEAD) - 2026-xx-xx
 
+### Fixed
+
+- Downgrade plexus-xml to 4.0.4 to fix "No XmlService implementation found" error in Gradle's classloader.
+  plexus-xml 4.1+ uses JPMS-only service registration and dropped `META-INF/services`, which is incompatible with Gradle's flat classloader.
 
 ## [9.3.2](https://github.com/GradleUp/shadow/releases/tag/9.3.2) - 2026-02-27
 
